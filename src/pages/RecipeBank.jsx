@@ -8,10 +8,9 @@ export default function RecipeBank() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const pickFor = searchParams.get("pickFor");
-  const typeFilter = searchParams.get("type");
 
   const [search, setSearch] = useState("");
-  const [slotType, setSlotType] = useState(typeFilter || "all");
+  const [slotType, setSlotType] = useState("all");
   const [maxCal, setMaxCal] = useState(600);
   const [minProtein, setMinProtein] = useState(0);
   const [prepTime, setPrepTime] = useState("all");
@@ -41,11 +40,13 @@ export default function RecipeBank() {
   }, [search, slotType, maxCal, minProtein, prepTime, selectedTags, heatFilter]);
 
   const handleAdd = (recipe) => {
-    if (pickFor) {
+    if (pickFor !== null) {
       const today = new Date().toISOString().split("T")[0];
       const plan = getDayPlanForDate(today);
-      plan[pickFor] = recipe.id;
-      setDayPlanForDate(today, plan);
+      const idx = parseInt(pickFor, 10);
+      const slots = [...plan.slots];
+      slots[idx] = recipe.id;
+      setDayPlanForDate(today, { slots });
       navigate("/");
     }
   };
@@ -60,9 +61,9 @@ export default function RecipeBank() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-warm-900">
-          {pickFor ? `Pick for ${pickFor.replace("_", " ")}` : "Recipe Bank"}
+          {pickFor !== null ? `Pick for Slot ${parseInt(pickFor) + 1}` : "Recipe Bank"}
         </h2>
-        {pickFor ? (
+        {pickFor !== null ? (
           <button
             onClick={() => navigate("/")}
             className="text-sm text-warm-500 hover:text-warm-700"
@@ -205,7 +206,7 @@ export default function RecipeBank() {
           <RecipeCard
             key={r.id}
             recipe={r}
-            onAdd={pickFor ? handleAdd : null}
+            onAdd={pickFor !== null ? handleAdd : null}
           />
         ))}
       </div>

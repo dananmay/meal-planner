@@ -65,10 +65,12 @@ export default function WeeklyOverview() {
             {weekPlan.map((day, idx) => {
               const { totalCal, totalProtein, totalCarbs, totalFat } = getDayTotals(day);
               const status = totalCal > 0 ? getBudgetStatus(totalCal) : "green";
-              const m1 = day.meal_1 ? getRecipeById(day.meal_1) : null;
-              const m2 = day.meal_2 ? getRecipeById(day.meal_2) : null;
-              const sn = day.snack ? getRecipeById(day.snack) : null;
-              const isEmpty = !m1 && !m2 && !sn;
+              const slots = day.slots || [];
+              const filledRecipes = slots
+                .filter(Boolean)
+                .map((id) => getRecipeById(id))
+                .filter(Boolean);
+              const isEmpty = filledRecipes.length === 0;
               const dateStr = weekDates[idx];
               const isToday = dateStr === new Date().toISOString().split("T")[0];
 
@@ -123,21 +125,14 @@ export default function WeeklyOverview() {
                     <p className="text-warm-400 text-sm">No meals planned</p>
                   ) : (
                     <div className="flex flex-wrap gap-2 text-sm">
-                      {m1 && (
-                        <span className="bg-black/20 px-2.5 py-1 rounded-lg text-warm-700 inline-flex items-center gap-1">
-                          <MealIcon className="w-3.5 h-3.5 text-warm-500" />{m1.name}
-                        </span>
-                      )}
-                      {m2 && (
-                        <span className="bg-black/20 px-2.5 py-1 rounded-lg text-warm-700 inline-flex items-center gap-1">
-                          <MealIcon className="w-3.5 h-3.5 text-warm-500" />{m2.name}
-                        </span>
-                      )}
-                      {sn && (
-                        <span className="bg-black/20 px-2.5 py-1 rounded-lg text-warm-700 inline-flex items-center gap-1">
-                          <SnackIcon className="w-3.5 h-3.5 text-warm-500" />{sn.name}
-                        </span>
-                      )}
+                      {filledRecipes.map((recipe) => {
+                        const Icon = recipe.slot_type === "snack" ? SnackIcon : MealIcon;
+                        return (
+                          <span key={recipe.id} className="bg-black/20 px-2.5 py-1 rounded-lg text-warm-700 inline-flex items-center gap-1">
+                            <Icon className="w-3.5 h-3.5 text-warm-500" />{recipe.name}
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

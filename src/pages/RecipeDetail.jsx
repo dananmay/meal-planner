@@ -25,20 +25,17 @@ export default function RecipeDetail() {
   const handleAddToToday = () => {
     const today = new Date().toISOString().split("T")[0];
     const plan = getDayPlanForDate(today);
+    const slots = [...plan.slots];
 
-    if (recipe.slot_type === "snack") {
-      plan.snack = recipe.id;
+    // Find first empty slot, or overwrite the first one
+    const emptyIdx = slots.findIndex((s) => !s);
+    if (emptyIdx !== -1) {
+      slots[emptyIdx] = recipe.id;
     } else {
-      if (!plan.meal_1) {
-        plan.meal_1 = recipe.id;
-      } else if (!plan.meal_2) {
-        plan.meal_2 = recipe.id;
-      } else {
-        plan.meal_1 = recipe.id;
-      }
+      slots[0] = recipe.id;
     }
 
-    setDayPlanForDate(today, plan);
+    setDayPlanForDate(today, { slots });
     navigate("/");
   };
 

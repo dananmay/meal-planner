@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 
 const STORAGE_KEY = "mealplanner_days";
+export const DEFAULT_SLOT_COUNT = 3;
+export const MAX_SLOT_COUNT = 4;
 
 function loadAllDays() {
   try {
@@ -18,11 +20,24 @@ function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
+function migrateDayPlan(plan) {
+  if (Array.isArray(plan.slots)) return plan;
+  return {
+    date: plan.date,
+    slots: [plan.meal_1 || null, plan.meal_2 || null, plan.snack || null],
+  };
+}
+
+function emptyPlan(dateKey) {
+  return { date: dateKey, slots: [null, null, null] };
+}
+
 export function useDayPlan(date) {
   const dateKey = date || todayStr();
   const [dayPlan, setDayPlan] = useState(() => {
     const all = loadAllDays();
-    return all[dateKey] || { date: dateKey, meal_1: null, meal_2: null, snack: null };
+    const raw = all[dateKey];
+    return raw ? migrateDayPlan(raw) : emptyPlan(dateKey);
   });
 
   const persist = useCallback(
@@ -35,9 +50,11 @@ export function useDayPlan(date) {
   );
 
   const setSlot = useCallback(
-    (slot, recipeId) => {
+    (index, recipeId) => {
       setDayPlan((prev) => {
-        const next = { ...prev, [slot]: recipeId };
+        const slots = [...prev.slots];
+        slots[index] = recipeId;
+        const next = { ...prev, slots };
         persist(next);
         return next;
       });
@@ -46,9 +63,11 @@ export function useDayPlan(date) {
   );
 
   const clearSlot = useCallback(
-    (slot) => {
+    (index) => {
       setDayPlan((prev) => {
-        const next = { ...prev, [slot]: null };
+        const slots = [...prev.slots];
+        slots[index] = null;
+        const next = { ...prev, slots };
         persist(next);
         return next;
       });
@@ -66,9 +85,11 @@ export function useDayPlan(date) {
   );
 
   const swapSlots = useCallback(
-    (slotA, slotB) => {
+    (idxA, idxB) => {
       setDayPlan((prev) => {
-        const next = { ...prev, [slotA]: prev[slotB], [slotB]: prev[slotA] };
+        const slots = [...prev.slots];
+        [slots[idxA], slots[idxB]] = [slots[idxB], slots[idxA]];
+        const next = { ...prev, slots };
         persist(next);
         return next;
       });
@@ -76,12 +97,35 @@ export function useDayPlan(date) {
     [persist]
   );
 
-  return { dayPlan, setSlot, clearSlot, setFullDay, swapSlots };
+  const addSlot = useCallback(() => {
+    setDayPlan((prev) => {
+      if (prev.slots.length >= MAX_SLOT_COUNT) return prev;
+      const next = { ...prev, slots: [...prev.slots, null] };
+      persist(next);
+      return next;
+    });
+  }, [persist]);
+
+  const removeSlot = useCallback(
+    (index) => {
+      setDayPlan((prev) => {
+        if (prev.slots.length <= DEFAULT_SLOT_COUNT) return prev;
+        const slots = prev.slots.filter((_, i) => i !== index);
+        const next = { ...prev, slots };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  return { dayPlan, setSlot, clearSlot, setFullDay, swapSlots, addSlot, removeSlot };
 }
 
 export function getDayPlanForDate(date) {
   const all = loadAllDays();
-  return all[date] || { date, meal_1: null, meal_2: null, snack: null };
+  const raw = all[date];
+  return raw ? migrateDayPlan(raw) : emptyPlan(date);
 }
 
 export function setDayPlanForDate(date, plan) {

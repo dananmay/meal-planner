@@ -3,34 +3,44 @@ import { getRecipeById } from "../data/recipes";
 import HeatLevel from "./HeatLevel";
 import { MealIcon, SnackIcon } from "./Icons";
 
-const slotLabels = {
-  meal_1: "Meal 1",
-  meal_2: "Meal 2",
-  snack: "Snack",
-};
+function getSlotLabel(index, recipe) {
+  if (!recipe) return `Slot ${index + 1}`;
+  return recipe.slot_type === "snack" ? "Snack" : "Meal";
+}
 
-const slotIcons = {
-  meal_1: MealIcon,
-  meal_2: MealIcon,
-  snack: SnackIcon,
-};
+function getSlotIcon(recipe) {
+  return recipe?.slot_type === "snack" ? SnackIcon : MealIcon;
+}
 
-export default function RecipeSlot({ slotKey, recipeId, onBrowse, onClear, onSwapUp, onSwapDown, showSwap }) {
+export default function RecipeSlot({ slotIndex, recipeId, onBrowse, onClear, onSwapUp, onSwapDown, onRemove }) {
   const recipe = recipeId ? getRecipeById(recipeId) : null;
+  const label = getSlotLabel(slotIndex, recipe);
+  const Icon = getSlotIcon(recipe);
 
   if (!recipe) {
     return (
       <div className="bg-warm-100 rounded-2xl border border-warm-200 p-5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-warm-400 font-medium">
-          {(() => { const Icon = slotIcons[slotKey]; return <Icon className="w-5 h-5" />; })()}
-          {slotLabels[slotKey]}
+          <Icon className="w-5 h-5" />
+          {label}
         </div>
-        <button
-          onClick={onBrowse}
-          className="px-4 py-2 bg-warm-500 text-white rounded-lg font-medium hover:bg-warm-600 transition-colors"
-        >
-          Browse
-        </button>
+        <div className="flex items-center gap-2">
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="px-2 py-1.5 text-warm-400 hover:text-red-500 text-sm transition-colors"
+              title="Remove slot"
+            >
+              ✕
+            </button>
+          )}
+          <button
+            onClick={onBrowse}
+            className="px-4 py-2 bg-warm-500 text-white rounded-lg font-medium hover:bg-warm-600 transition-colors"
+          >
+            Browse
+          </button>
+        </div>
       </div>
     );
   }
@@ -40,13 +50,13 @@ export default function RecipeSlot({ slotKey, recipeId, onBrowse, onClear, onSwa
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="text-xs text-warm-400 font-medium uppercase tracking-wide mb-1">
-            {slotLabels[slotKey]}
+            {label}
           </div>
           <Link
             to={`/recipe/${recipe.id}`}
             className="text-warm-900 font-semibold hover:text-warm-600 transition-colors inline-flex items-center gap-1.5"
           >
-            {(() => { const Icon = slotIcons[slotKey]; return <Icon className="w-4 h-4 text-warm-500" />; })()}
+            <Icon className="w-4 h-4 text-warm-500" />
             {recipe.name}
           </Link>
           <div className="flex items-center gap-3 mt-2 text-sm text-warm-600">
@@ -58,7 +68,7 @@ export default function RecipeSlot({ slotKey, recipeId, onBrowse, onClear, onSwa
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {showSwap && (
+          {(onSwapUp || onSwapDown) && (
             <div className="flex flex-col gap-0.5 mr-1">
               {onSwapUp && (
                 <button onClick={onSwapUp} className="text-warm-400 hover:text-warm-600 text-xs leading-none" title="Move up">▲</button>
@@ -81,6 +91,15 @@ export default function RecipeSlot({ slotKey, recipeId, onBrowse, onClear, onSwa
           >
             ✕
           </button>
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="px-2 py-1.5 text-warm-300 hover:text-red-500 text-xs transition-colors"
+              title="Remove slot"
+            >
+              ⊖
+            </button>
+          )}
         </div>
       </div>
     </div>

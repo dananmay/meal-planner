@@ -1,20 +1,14 @@
 import { getAllRecipes } from "../data/recipes";
 
 export const MAX_DAILY_CALORIES = 1250;
-export const SLOT_TARGETS = {
-  meal_1: { min: 350, max: 525, label: "Meal 1" },
-  meal_2: { min: 400, max: 550, label: "Meal 2" },
-  snack: { min: 220, max: 330, label: "Snack" },
-};
 
 export function getDayTotals(dayPlan) {
   let totalCal = 0;
   let totalProtein = 0;
   let totalCarbs = 0;
   let totalFat = 0;
-  const slots = ["meal_1", "meal_2", "snack"];
-  for (const slot of slots) {
-    const id = dayPlan[slot];
+  const slots = dayPlan.slots || [];
+  for (const id of slots) {
     if (id) {
       const r = getAllRecipes().find((rec) => rec.id === id);
       if (r) {
@@ -45,16 +39,14 @@ export function getBudgetStatus(totalCal) {
   return "red";
 }
 
-export function suggestSwaps(dayPlan, slotToSwap) {
-  const currentId = dayPlan[slotToSwap];
+export function suggestSwaps(dayPlan, slotIndex) {
+  const slots = dayPlan.slots || [];
+  const currentId = slots[slotIndex];
   if (!currentId) return [];
   const currentRecipe = getAllRecipes().find((r) => r.id === currentId);
   if (!currentRecipe) return [];
 
-  const otherSlotIds = ["meal_1", "meal_2", "snack"]
-    .filter((s) => s !== slotToSwap)
-    .map((s) => dayPlan[s])
-    .filter(Boolean);
+  const otherSlotIds = slots.filter((id, i) => i !== slotIndex && id);
 
   const otherCals = otherSlotIds.reduce((sum, id) => {
     const r = getAllRecipes().find((rec) => rec.id === id);
@@ -62,13 +54,10 @@ export function suggestSwaps(dayPlan, slotToSwap) {
   }, 0);
 
   const maxForSlot = MAX_DAILY_CALORIES - otherCals;
-  const isSnackSlot = slotToSwap === "snack";
 
   return getAllRecipes()
     .filter((r) => {
       if (r.id === currentId) return false;
-      if (isSnackSlot && r.slot_type !== "snack") return false;
-      if (!isSnackSlot && r.slot_type !== "meal") return false;
       if (r.calories > maxForSlot) return false;
       if (otherSlotIds.includes(r.id)) return false;
       return r.calories < currentRecipe.calories;

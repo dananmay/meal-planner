@@ -35,8 +35,7 @@ export function generateGroceryList(weekPlan) {
   const ingredientMap = {};
 
   for (const day of weekPlan) {
-    for (const slot of ["meal_1", "meal_2", "snack"]) {
-      const recipeId = day[slot];
+    for (const recipeId of (day.slots || [])) {
       if (!recipeId) continue;
       const recipe = getRecipeById(recipeId);
       if (!recipe) continue;
@@ -80,8 +79,7 @@ export function generateGroceryByRecipe(weekPlan, weekDates) {
   for (let i = 0; i < weekPlan.length; i++) {
     if (weekDates[i] < today) continue;
     const day = weekPlan[i];
-    for (const slot of ["meal_1", "meal_2", "snack"]) {
-      const recipeId = day[slot];
+    for (const recipeId of (day.slots || [])) {
       if (!recipeId) continue;
       const recipe = getRecipeById(recipeId);
       if (!recipe) continue;

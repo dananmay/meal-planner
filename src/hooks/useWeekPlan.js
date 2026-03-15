@@ -32,8 +32,7 @@ export function useWeekPlan() {
     (fromIdx, toIdx) => {
       const source = weekPlan[fromIdx];
       const targetDate = weekDates[toIdx];
-      const newPlan = { meal_1: source.meal_1, meal_2: source.meal_2, snack: source.snack };
-      setDayPlanForDate(targetDate, newPlan);
+      setDayPlanForDate(targetDate, { slots: [...source.slots] });
       refresh();
     },
     [weekPlan, weekDates, refresh]

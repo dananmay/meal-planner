@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDayPlan } from "../hooks/useDayPlan";
+import { MAX_SLOT_COUNT } from "../hooks/useDayPlan";
 import { getDayTotals, isOverBudget, suggestSwaps } from "../utils/calories";
 import { surpriseMe } from "../utils/randomizer";
 import { getRecipeById } from "../data/recipes";
 import CalorieBudgetBar from "../components/CalorieBudgetBar";
 import RecipeSlot from "../components/RecipeSlot";
-import RecipeCard from "../components/RecipeCard";
 import { ShuffleIcon } from "../components/Icons";
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -19,29 +19,28 @@ function formatDate(dateStr) {
 
 export default function DailyPlanner() {
   const today = new Date().toISOString().split("T")[0];
-  const { dayPlan, setSlot, clearSlot, setFullDay, swapSlots } = useDayPlan(today);
+  const { dayPlan, setSlot, clearSlot, setFullDay, swapSlots, addSlot, removeSlot } = useDayPlan(today);
   const { totalCal, totalProtein, totalCarbs, totalFat } = getDayTotals(dayPlan);
   const navigate = useNavigate();
   const [swapSuggestions, setSwapSuggestions] = useState(null);
 
-  const handleBrowse = (slot) => {
-    const filter = slot === "snack" ? "snack" : "meal";
-    navigate(`/recipes?pickFor=${slot}&type=${filter}`);
+  const handleBrowse = (index) => {
+    navigate(`/recipes?pickFor=${index}`);
   };
 
   const handleSurprise = () => {
-    const combo = surpriseMe();
+    const combo = surpriseMe(dayPlan.slots.length);
     setFullDay(combo);
     setSwapSuggestions(null);
   };
 
-  const handleShowSwaps = (slot) => {
-    const swaps = suggestSwaps(dayPlan, slot);
-    setSwapSuggestions({ slot, recipes: swaps });
+  const handleShowSwaps = (index) => {
+    const swaps = suggestSwaps(dayPlan, index);
+    setSwapSuggestions({ index, recipes: swaps });
   };
 
   const over = isOverBudget(dayPlan);
-  const slots = ["meal_1", "meal_2", "snack"];
+  const slots = dayPlan.slots;
 
   return (
     <div className="space-y-5">
@@ -62,20 +61,20 @@ export default function DailyPlanner() {
       <CalorieBudgetBar totalCal={totalCal} totalProtein={totalProtein} totalCarbs={totalCarbs} totalFat={totalFat} />
 
       <div className="space-y-3">
-        {slots.map((slot, idx) => (
-          <div key={slot}>
+        {slots.map((recipeId, idx) => (
+          <div key={idx}>
             <RecipeSlot
-              slotKey={slot}
-              recipeId={dayPlan[slot]}
-              onBrowse={() => handleBrowse(slot)}
-              onClear={() => { clearSlot(slot); setSwapSuggestions(null); }}
-              onSwapUp={idx > 0 && slot !== "snack" && slots[idx - 1] !== "snack" ? () => swapSlots(slot, slots[idx - 1]) : null}
-              onSwapDown={idx < 1 && slots[idx + 1] !== "snack" ? () => swapSlots(slot, slots[idx + 1]) : null}
-              showSwap={slot !== "snack"}
+              slotIndex={idx}
+              recipeId={recipeId}
+              onBrowse={() => handleBrowse(idx)}
+              onClear={() => { clearSlot(idx); setSwapSuggestions(null); }}
+              onSwapUp={idx > 0 ? () => swapSlots(idx, idx - 1) : null}
+              onSwapDown={idx < slots.length - 1 ? () => swapSlots(idx, idx + 1) : null}
+              onRemove={idx >= 3 ? () => { removeSlot(idx); setSwapSuggestions(null); } : null}
             />
-            {over && dayPlan[slot] && (
+            {over && recipeId && (
               <button
-                onClick={() => handleShowSwaps(slot)}
+                onClick={() => handleShowSwaps(idx)}
                 className="mt-1 text-xs text-spice-500 hover:text-spice-700 ml-4"
               >
                 Show lower-calorie swaps →
@@ -83,12 +82,21 @@ export default function DailyPlanner() {
             )}
           </div>
         ))}
+
+        {slots.length < MAX_SLOT_COUNT && (
+          <button
+            onClick={addSlot}
+            className="w-full py-3 border-2 border-dashed border-warm-200 rounded-2xl text-warm-400 font-medium hover:border-warm-400 hover:text-warm-600 transition-colors"
+          >
+            + Add slot
+          </button>
+        )}
       </div>
 
       {swapSuggestions && swapSuggestions.recipes.length > 0 && (
         <div className="bg-spice-50 rounded-2xl p-4 border border-spice-100">
           <h3 className="text-sm font-semibold text-spice-700 mb-3">
-            Swap suggestions for {swapSuggestions.slot.replace("_", " ")}
+            Swap suggestions for Slot {swapSuggestions.index + 1}
           </h3>
           <div className="space-y-2">
             {swapSuggestions.recipes.map((r) => (
@@ -102,7 +110,7 @@ export default function DailyPlanner() {
                 </div>
                 <button
                   onClick={() => {
-                    setSlot(swapSuggestions.slot, r.id);
+                    setSlot(swapSuggestions.index, r.id);
                     setSwapSuggestions(null);
                   }}
                   className="px-3 py-1 bg-spice-500 text-white text-sm rounded-lg hover:bg-spice-600"
