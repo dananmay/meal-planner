@@ -12,7 +12,7 @@ export default function RecipeBank() {
 
   const [search, setSearch] = useState("");
   const [slotType, setSlotType] = useState(typeFilter || "all");
-  const [maxCal, setMaxCal] = useState(500);
+  const [maxCal, setMaxCal] = useState(600);
   const [minProtein, setMinProtein] = useState(0);
   const [prepTime, setPrepTime] = useState("all");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -119,7 +119,7 @@ export default function RecipeBank() {
             <input
               type="range"
               min={100}
-              max={500}
+              max={600}
               step={10}
               value={maxCal}
               onChange={(e) => setMaxCal(Number(e.target.value))}
