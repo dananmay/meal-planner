@@ -29,7 +29,7 @@ export default function DailyPlanner() {
   };
 
   const handleSurprise = () => {
-    const combo = surpriseMe(dayPlan.slots.length);
+    const combo = surpriseMe(dayPlan.slots);
     setFullDay(combo);
     setSwapSuggestions(null);
   };

@@ -39,12 +39,13 @@ export function useWeekPlan() {
   );
 
   const autoFill = useCallback(() => {
-    const filled = autoFillWeek(startDate);
+    const existing = weekDates.map((d) => getDayPlanForDate(d));
+    const filled = autoFillWeek(startDate, existing);
     for (const day of filled) {
       setDayPlanForDate(day.date, day);
     }
     setWeekPlan(filled.map((d) => ({ ...d, date: d.date })));
-  }, [startDate]);
+  }, [startDate, weekDates]);
 
   return { weekPlan, weekDates, startDate, copyDay, autoFill, refresh };
 }

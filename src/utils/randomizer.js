@@ -2,6 +2,8 @@ import { getAllRecipes } from "../data/recipes";
 import { MAX_DAILY_CALORIES } from "./calories";
 import { DEFAULT_SLOT_COUNT } from "../hooks/useDayPlan";
 
+const MIN_DAILY_CALORIES = 1050;
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -11,58 +13,88 @@ function shuffle(arr) {
   return a;
 }
 
-export function surpriseMe(slotCount = DEFAULT_SLOT_COUNT, previousDayPlan = null) {
+/**
+ * Fill empty slots in an existing day plan.
+ * Keeps already-filled slots unchanged. Any recipe type can fill any slot.
+ * Targets total between MIN_DAILY_CALORIES and MAX_DAILY_CALORIES.
+ */
+export function surpriseMe(currentSlots = [], previousDayPlan = null) {
   const all = getAllRecipes();
-  const meals = all.filter((r) => r.slot_type === "meal");
-  const snacks = all.filter((r) => r.slot_type === "snack");
 
-  const excludeIds = previousDayPlan
+  // IDs already locked in (filled slots + previous day for variety)
+  const filledIds = currentSlots.filter(Boolean);
+  const prevIds = previousDayPlan
     ? (previousDayPlan.slots || []).filter(Boolean)
     : [];
+  const excludeIds = [...new Set([...filledIds, ...prevIds])];
 
-  const shuffledMeals = shuffle(meals.filter((m) => !excludeIds.includes(m.id)));
-  const shuffledSnacks = shuffle(snacks.filter((s) => !excludeIds.includes(s.id)));
+  // Calories already committed by filled slots
+  const filledCals = filledIds.reduce((sum, id) => {
+    const r = all.find((rec) => rec.id === id);
+    return sum + (r ? r.calories : 0);
+  }, 0);
 
-  // Try (slotCount - 1) meals + 1 snack
-  const mealCount = slotCount - 1;
+  const emptyCount = currentSlots.filter((s) => !s).length;
+  if (emptyCount === 0) return { slots: [...currentSlots] };
 
-  // Brute-force: try meal combos with a snack
-  const mealCombos = getCombos(shuffledMeals, mealCount);
-  for (const mealCombo of mealCombos) {
-    const mealCals = mealCombo.reduce((s, m) => s + m.calories, 0);
-    for (const snack of shuffledSnacks) {
-      if (mealCals + snack.calories <= MAX_DAILY_CALORIES) {
-        return { slots: [...mealCombo.map((m) => m.id), snack.id] };
-      }
+  const candidates = shuffle(all.filter((r) => !excludeIds.includes(r.id)));
+
+  // Try to find a combo of `emptyCount` recipes that lands in the calorie target
+  const combos = getCombos(candidates, emptyCount, 500);
+  for (const combo of combos) {
+    const comboCals = combo.reduce((s, r) => s + r.calories, 0);
+    const total = filledCals + comboCals;
+    if (total >= MIN_DAILY_CALORIES && total <= MAX_DAILY_CALORIES) {
+      return buildResult(currentSlots, combo);
     }
   }
 
-  // Fallback: pick lowest cal options
-  const sortedMeals = [...meals].sort((a, b) => a.calories - b.calories);
-  const sortedSnacks = [...snacks].sort((a, b) => a.calories - b.calories);
-  const slots = [];
-  for (let i = 0; i < mealCount; i++) {
-    slots.push(sortedMeals[i]?.id || null);
+  // Fallback: find combo closest to MAX_DAILY_CALORIES without exceeding it
+  let bestCombo = null;
+  let bestTotal = 0;
+  for (const combo of getCombos(candidates, emptyCount, 500)) {
+    const comboCals = combo.reduce((s, r) => s + r.calories, 0);
+    const total = filledCals + comboCals;
+    if (total <= MAX_DAILY_CALORIES && total > bestTotal) {
+      bestTotal = total;
+      bestCombo = combo;
+    }
   }
-  slots.push(sortedSnacks[0]?.id || null);
+
+  if (bestCombo) return buildResult(currentSlots, bestCombo);
+
+  // Last resort: pick lowest calorie recipes
+  const sorted = [...candidates].sort((a, b) => a.calories - b.calories);
+  return buildResult(currentSlots, sorted.slice(0, emptyCount));
+}
+
+function buildResult(currentSlots, recipes) {
+  const slots = [...currentSlots];
+  let ri = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (!slots[i] && ri < recipes.length) {
+      slots[i] = recipes[ri].id;
+      ri++;
+    }
+  }
   return { slots };
 }
 
-function getCombos(arr, count) {
+function getCombos(arr, count, limit = 200) {
   if (count === 0) return [[]];
-  if (count === 1) return arr.map((item) => [item]);
+  if (count === 1) return arr.slice(0, limit).map((item) => [item]);
   const results = [];
-  for (let i = 0; i < arr.length && results.length < 200; i++) {
+  for (let i = 0; i < arr.length && results.length < limit; i++) {
     const rest = arr.slice(i + 1);
-    for (const combo of getCombos(rest, count - 1)) {
+    for (const combo of getCombos(rest, count - 1, limit - results.length)) {
       results.push([arr[i], ...combo]);
-      if (results.length >= 200) break;
+      if (results.length >= limit) break;
     }
   }
   return results;
 }
 
-export function autoFillWeek(startDate) {
+export function autoFillWeek(startDate, existingPlans = []) {
   const days = [];
   let prevDay = null;
 
@@ -71,7 +103,10 @@ export function autoFillWeek(startDate) {
     date.setDate(date.getDate() + i);
     const dateStr = date.toISOString().split("T")[0];
 
-    const combo = surpriseMe(DEFAULT_SLOT_COUNT, prevDay);
+    const existing = existingPlans[i];
+    const currentSlots = existing?.slots || new Array(DEFAULT_SLOT_COUNT).fill(null);
+
+    const combo = surpriseMe(currentSlots, prevDay);
     const day = { date: dateStr, ...combo };
     days.push(day);
     prevDay = day;
