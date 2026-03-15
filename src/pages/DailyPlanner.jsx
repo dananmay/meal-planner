@@ -93,33 +93,37 @@ export default function DailyPlanner() {
         )}
       </div>
 
-      {swapSuggestions && swapSuggestions.recipes.length > 0 && (
+      {swapSuggestions && (
         <div className="bg-spice-50 rounded-2xl p-4 border border-spice-100">
           <h3 className="text-sm font-semibold text-spice-700 mb-3">
             Swap suggestions for Slot {swapSuggestions.index + 1}
           </h3>
-          <div className="space-y-2">
-            {swapSuggestions.recipes.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between bg-warm-100 rounded-xl p-3 border border-spice-100"
-              >
-                <div>
-                  <span className="font-medium text-warm-800">{r.name}</span>
-                  <span className="text-sm text-warm-500 ml-2">{r.calories} kcal · {r.protein_g}g P · {r.carbs_g}g C · {r.fat_g}g F</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setSlot(swapSuggestions.index, r.id);
-                    setSwapSuggestions(null);
-                  }}
-                  className="px-3 py-1 bg-spice-500 text-white text-sm rounded-lg hover:bg-spice-600"
+          {swapSuggestions.recipes.length > 0 ? (
+            <div className="space-y-2">
+              {swapSuggestions.recipes.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between bg-warm-100 rounded-xl p-3 border border-spice-100"
                 >
-                  Swap
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <span className="font-medium text-warm-800">{r.name}</span>
+                    <span className="text-sm text-warm-500 ml-2">{r.calories} kcal · {r.protein_g}g P · {r.carbs_g}g C · {r.fat_g}g F</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSlot(swapSuggestions.index, r.id);
+                      setSwapSuggestions(null);
+                    }}
+                    className="px-3 py-1 bg-spice-500 text-white text-sm rounded-lg hover:bg-spice-600"
+                  >
+                    Swap
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-warm-500">No lower-calorie alternatives found. Try removing a recipe instead.</p>
+          )}
         </div>
       )}
     </div>
